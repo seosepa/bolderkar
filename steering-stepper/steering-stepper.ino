@@ -26,29 +26,29 @@ Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
 void setup() {
   // set the speed at 60 rpm:
   myStepper.setSpeed(15);
-    pinMode(2, INPUT_PULLUP);
+    pinMode(12, INPUT_PULLUP);
   // initialize the serial port:
   Serial.begin(9600);
 }
 
 void loop() {
-   // int sensorVal = digitalRead(2);
-  //   if (sensorVal == LOW) {
-  for (int i = 0;i<=2;i++)
-  {
-      // step one revolution  in one direction:
-  Serial.println("clockwise");
-  Serial.println(i);
-  myStepper.step(stepsPerRevolution);
-  }
+  int sensorVal = digitalRead(12);
+  if (sensorVal == HIGH) {
+    for (int i = 0;i<=2;i++)
+      {
+        // step one revolution  in one direction:
+        Serial.println("clockwise");
+        Serial.println(i);
+        myStepper.step(stepsPerRevolution);
+      }
     for (int i = 0;i<=2;i++)
   {
       // step one revolution  in one direction:
-  Serial.println("clockwise");
+  Serial.println("counterclockwise");
   Serial.println(i);
   myStepper.step(-stepsPerRevolution);
   }
-  //   }
+     }
 
  // delay(100000);
 
@@ -57,3 +57,4 @@ void loop() {
 //  myStepper.step(-stepsPerRevolution);
 //  delay(1000);
 }
+
