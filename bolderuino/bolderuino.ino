@@ -36,7 +36,7 @@ uint16_t unThrottleCenter = TRC_NEUTRAL;
 // skonig hax
 #define pinMd10Pwm 6
 #define pinMd10Direction 7
-uint16_t nosignalsafety = 0;
+uint32_t nosignalsafety = 0;
 
 
 #define PROGRAM_PIN 9
@@ -216,7 +216,6 @@ void loop()
       
       
       gDirection = gThrottleDirection;
-
       
 
       switch(gDirection)
@@ -314,9 +313,10 @@ void loop()
 
   // no signal == no motor output
   if(bUpdateFlags == 0) {
-    Serial.println(nosignalsafety);
+      Serial.println(nosignalsafety);
     if (nosignalsafety < 10) {
       md10rpmSpeed(0, 0);
+      Serial.println("safety no signal");
     } else {
       nosignalsafety = nosignalsafety - 1;
     }
@@ -329,7 +329,7 @@ void loop()
 // simple interrupt service routine
 void calcThrottle()
 {
-  nosignalsafety = 100;
+  nosignalsafety = 200;
   // if the pin is high, its a rising edge of the signal pulse, so lets record its value
   if(digitalRead(THROTTLE_IN_PIN) == HIGH)
   {
@@ -347,7 +347,7 @@ void calcThrottle()
 
 void calcSteering()
 {
-  nosignalsafety = 100;
+  nosignalsafety = 200;
   if(digitalRead(STEERING_IN_PIN) == HIGH)
   {
     ulSteeringStart = micros();
@@ -360,8 +360,7 @@ void calcSteering()
 }
 
 void md10rpmSpeed(int rpm, int mDirection){
-  analogWrite(pinMd10Pwm,rpm / 2);                    // stop motor
+  analogWrite(pinMd10Pwm,rpm);                    // stop motor
   digitalWrite(pinMd10Direction,mDirection);
-  //Serial.println(rpm);
 }
 
