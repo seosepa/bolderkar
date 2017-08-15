@@ -75,8 +75,6 @@ uint8_t gOldGear = GEAR_NONE;
 #define DIRECTION_STOP 0
 #define DIRECTION_FORWARD 1
 #define DIRECTION_REVERSE 2
-#define DIRECTION_ROTATE_RIGHT 3
-#define DIRECTION_ROTATE_LEFT 4
 
 uint8_t gThrottleDirection = DIRECTION_STOP;
 uint8_t gDirection = DIRECTION_STOP;
@@ -85,9 +83,6 @@ uint8_t gOldDirection = DIRECTION_STOP;
 #define IDLE_MAX 50
 
 #define MODE_RUN 0
-
-
-uint8_t gMode = MODE_RUN;
 
 unsigned long pulse_time  ;
 
@@ -100,19 +95,9 @@ void setup()
   attachInterrupt(0 /* INT0 = THROTTLE_IN_PIN */,calcThrottle,CHANGE);
   attachInterrupt(1 /* INT1 = STEERING_IN_PIN */,calcSteering,CHANGE);
   
-
-  pinMode(PWM_SPEED_LEFT,OUTPUT);
-  pinMode(PWM_SPEED_RIGHT,OUTPUT);
-  pinMode(LEFT1,OUTPUT);
-  pinMode(LEFT2,OUTPUT);
-  pinMode(RIGHT1,OUTPUT);
-  pinMode(RIGHT2,OUTPUT);
-   pinMode(12,OUTPUT);
-   pulse_time =millis() ;
-  pinMode(PROGRAM_PIN,INPUT);
-pinMode(pinMd10Pwm,OUTPUT);
-pinMode(pinMd10Direction,OUTPUT);
-  
+  pulse_time =millis() ;;
+  pinMode(pinMd10Pwm,OUTPUT);
+  pinMode(pinMd10Direction,OUTPUT);
 }
 
 void loop()
@@ -158,14 +143,6 @@ void loop()
     // shared copies may contain junk. Luckily we have our local copies to work with :-)
   }
 
-
-  // do any processing from here onwards
-  // only use the local values unAuxIn, unThrottleIn and unSteeringIn, the shared
-  // variables unAuxInShared, unThrottleInShared, unSteeringInShared are always owned by
-  // the interrupt routines and should not be used in loop
-  
-  if(gMode == MODE_RUN)
-  {
     // we are checking to see if the channel value has changed, this is indicated 
     // by the flags. For the simple pass through we don't really need this check,
     // but for a more complex project where a new signal requires significant processing
@@ -208,15 +185,9 @@ void loop()
   
     if(bUpdateFlags & STEERING_FLAG)
     {
-      uint8_t throttleLeft = gThrottle;
-      uint8_t throttleRight = gThrottle;
       uint8_t directionForPwm = 0;
-
-
-      
       
       gDirection = gThrottleDirection;
-      
 
       switch(gDirection)
       {
@@ -227,89 +198,12 @@ void loop()
         directionForPwm = 1;
         break;
       }
-
       
       md10rpmSpeed(gThrottle,directionForPwm);
-      
-      // see previous comments regarding trapping out of range errors
-      // this is left for the user to decide how to handle and flag
-      unSteeringIn = constrain(unSteeringIn,unSteeringMin,unSteeringMax);
-  
-      // if idle spin on spot
-      switch(gGear)
-      {
-      case GEAR_IDLE:
-        if(unSteeringIn > (unSteeringCenter + RC_DEADBAND))
-        {
-          gDirection = DIRECTION_ROTATE_RIGHT;
-          // use steering to set throttle
-          throttleRight = throttleLeft = map(unSteeringIn,unSteeringCenter,unSteeringMax,PWM_MIN,PWM_MAX);
-        }
-        else if(unSteeringIn < (unSteeringCenter - RC_DEADBAND))
-        {
-          gDirection = DIRECTION_ROTATE_LEFT;
-          // use steering to set throttle
-          throttleRight = throttleLeft = map(unSteeringIn,unSteeringMin,unSteeringCenter,PWM_MAX,PWM_MIN);
-        }
-        break;
-      // if not idle proportionally restrain inside track to turn vehicle around it
-      case GEAR_FULL:
-        if(unSteeringIn > (unSteeringCenter + RC_DEADBAND))
-        {
-          throttleLeft = map(unSteeringIn,unSteeringCenter,unSteeringMax,gThrottle,PWM_MIN);
-        }
-        else if(unSteeringIn < (unSteeringCenter - RC_DEADBAND))
-        {
-          throttleRight = map(unSteeringIn,unSteeringMin,unSteeringCenter,PWM_MIN,gThrottle);
-        }
-       
-        break;
-      }
-      analogWrite(PWM_SPEED_LEFT,throttleLeft);
-      analogWrite(PWM_SPEED_RIGHT,throttleRight);
+     
     }
-  }
   
-  if((gDirection != gOldDirection) || (gGear != gOldGear))
-  {
-    gOldDirection = gDirection;
-    gOldGear = gGear;
-    
-
-    switch(gDirection)
-    {
-    case DIRECTION_FORWARD:
-      digitalWrite(LEFT1,LOW);
-      digitalWrite(LEFT2,HIGH);
-      digitalWrite(RIGHT1,LOW);
-      digitalWrite(RIGHT2,HIGH);
-      break;
-    case DIRECTION_REVERSE:
-      digitalWrite(LEFT1,HIGH);
-      digitalWrite(LEFT2,LOW);
-      digitalWrite(RIGHT1,HIGH);
-      digitalWrite(RIGHT2,LOW);
-      break;
-    case DIRECTION_ROTATE_RIGHT:
-      digitalWrite(LEFT1,HIGH);
-      digitalWrite(LEFT2,LOW);
-      digitalWrite(RIGHT1,LOW);
-      digitalWrite(RIGHT2,HIGH);
-      break;
-    case DIRECTION_ROTATE_LEFT:
-      digitalWrite(LEFT1,LOW);
-      digitalWrite(LEFT2,HIGH);
-      digitalWrite(RIGHT1,HIGH);
-      digitalWrite(RIGHT2,LOW);
-      break;
-    case DIRECTION_STOP:
-      digitalWrite(LEFT1,LOW);
-      digitalWrite(LEFT2,LOW);
-      digitalWrite(RIGHT1,LOW);
-      digitalWrite(RIGHT2,LOW);
-      break;
-    }
-  }
+  
 
   // no signal == no motor output
   if(bUpdateFlags == 0) {
@@ -360,7 +254,7 @@ void calcSteering()
 }
 
 void md10rpmSpeed(int rpm, int mDirection){
-  analogWrite(pinMd10Pwm,rpm);                    // stop motor
+  analogWrite(pinMd10Pwm,rpm / 2);                    // stop motor
   digitalWrite(pinMd10Direction,mDirection);
 }
 
