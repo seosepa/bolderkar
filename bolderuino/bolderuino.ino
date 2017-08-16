@@ -1,6 +1,9 @@
 
 // Greetingz Commander
 
+#include <Servo.h>
+Servo throttleServo;  // Servo for throttle control
+
 #define SRC_NEUTRAL 1500
 #define SRC_MAX 2000
 #define SRC_MIN 1000
@@ -8,7 +11,7 @@
 #define TRC_MAX 2000
 #define TRC_MIN 1000
 #define ERROR_center 50
-#define pERROR 100 
+#define pERROR 100
 
 uint16_t unSteeringMin = SRC_MIN + pERROR;
 uint16_t unSteeringMax = SRC_MAX - pERROR;
@@ -21,13 +24,11 @@ uint16_t unThrottleCenter = TRC_NEUTRAL;
 #define PWM_MIN 0
 #define PWM_MAX 255
 
-#define GEAR_NONE 1
-#define GEAR_IDLE 1
-#define GEAR_FULL 2
-
+#define pinThrottleServo 5
 #define pinMd10Pwm 6
 #define pinMd10Direction 7
-uint32_t nosignalsafety = 0;
+
+unsigned long nosignalsafety = 0;
 
 // Assign your channel in pins
 #define THROTTLE_IN_PIN 2
@@ -57,57 +58,46 @@ uint32_t ulThrottleStart;
 uint32_t ulSteeringStart;
 
 uint8_t gThrottle = 0;
-uint8_t gGear = GEAR_NONE;
-uint8_t gOldGear = GEAR_NONE;
+uint8_t gSteering = 0;
 
 #define DIRECTION_STOP 0
 #define DIRECTION_FORWARD 1
 #define DIRECTION_REVERSE 2
 
+#define DIRECTION_LEFT 0
+#define DIRECTION_RIGHT 1
+
 uint8_t gThrottleDirection = DIRECTION_STOP;
-uint8_t gDirection = DIRECTION_STOP;
-uint8_t gOldDirection = DIRECTION_STOP;
+uint8_t gSteeringDirection = DIRECTION_LEFT;
 
 #define IDLE_MAX 50
-
-unsigned long pulse_time  ;
 
 void setup()
 {
   Serial.begin(9600);
-
-  Serial.println("hello");
+  Serial.println("mounting swap partition");
 
   attachInterrupt(0 /* INT0 = THROTTLE_IN_PIN */,calcThrottle,CHANGE);
   attachInterrupt(1 /* INT1 = STEERING_IN_PIN */,calcSteering,CHANGE);
-  
-  pulse_time =millis() ;;
+
+  throttleServo.attach(5);
+
   pinMode(pinMd10Pwm,OUTPUT);
   pinMode(pinMd10Direction,OUTPUT);
 }
 
 void loop()
 {
-  // create local variables to hold a local copies of the channel inputs
-  // these are declared static so that thier values will be retained
-  // between calls to loop.
   static uint16_t unThrottleIn;
   static uint16_t unSteeringIn;
-  // local copy of update flags
   static uint8_t bUpdateFlags;
-// fail_safe();
-  // check shared update flags to see if any channels have a new signal
+
   if(bUpdateFlagsShared)
   {
     noInterrupts(); // turn interrupts off quickly while we take local copies of the shared variables
-     pulse_time =millis() ;
-      // take a local copy of which channels were updated in case we need to use this in the rest of loop
+    
+    // take a local copy of which channels were updated in case we need to use this in the rest of loop
     bUpdateFlags = bUpdateFlagsShared;
-
-    // in the current code, the shared values are always populated
-    // so we could copy them without testing the flags
-    // however in the future this could change, so lets
-    // only copy when the flags tell us we can.
 
     if(bUpdateFlags & THROTTLE_FLAG)
     {
@@ -118,86 +108,67 @@ void loop()
     {
       unSteeringIn = unSteeringInShared;
     }
-
-    // clear shared copy of updated flags as we have already taken the updates
-    // we still have a local copy if we need to use it in bUpdateFlags
+    
     bUpdateFlagsShared = 0;
 
-    interrupts(); // we have local copies of the inputs, so now we can turn interrupts back on
-    // as soon as interrupts are back on, we can no longer use the shared copies, the interrupt
-    // service routines own these and could update them at any time. During the update, the
-    // shared copies may contain junk. Luckily we have our local copies to work with :-)
+    interrupts(); 
   }
 
-    // we are checking to see if the channel value has changed, this is indicated 
-    // by the flags. For the simple pass through we don't really need this check,
-    // but for a more complex project where a new signal requires significant processing
-    // this allows us to only calculate new values when we have new inputs, rather than
-    // on every cycle.
-    if(bUpdateFlags & THROTTLE_FLAG)
+  if(bUpdateFlags & THROTTLE_FLAG)
+  {
+    unThrottleIn = constrain(unThrottleIn,unThrottleMin,unThrottleMax);
+    
+    if(unThrottleIn > (unThrottleCenter + ERROR_center))
     {
-      // A good idea would be to check the before and after value, 
-      // if they are not equal we are receiving out of range signals
-      // this could be an error, interference or a transmitter setting change
-      // in any case its a good idea to at least flag it to the user somehow
-      unThrottleIn = constrain(unThrottleIn,unThrottleMin,unThrottleMax);
-      
-      if(unThrottleIn > (unThrottleCenter + ERROR_center))
-      {
-        gThrottle = map(unThrottleIn,(unThrottleCenter + ERROR_center),unThrottleMax,PWM_MIN,PWM_MAX);
-        gThrottleDirection = DIRECTION_FORWARD;
-      }
-      else if (unThrottleIn < (unThrottleCenter - ERROR_center))
-      {
-        gThrottle = map(unThrottleIn,unThrottleMin,(unThrottleCenter- ERROR_center),PWM_MAX,PWM_MIN);
-        gThrottleDirection = DIRECTION_REVERSE;
-      }
- 
-      else
-      {
-      gThrottleDirection =DIRECTION_STOP;
+      gThrottle = map(unThrottleIn,(unThrottleCenter + ERROR_center),unThrottleMax,PWM_MIN,PWM_MAX);
+      gThrottleDirection = DIRECTION_FORWARD;
+    }
+    else if (unThrottleIn < (unThrottleCenter - ERROR_center))
+    {
+      gThrottle = map(unThrottleIn,unThrottleMin,(unThrottleCenter- ERROR_center),PWM_MAX,PWM_MIN);
+      gThrottleDirection = DIRECTION_REVERSE;
+    }
+    else
+    {
+      gThrottleDirection = DIRECTION_STOP;
       gThrottle=0;
-      }
-  
-      if(gThrottle < IDLE_MAX)
-      {
-        gGear = GEAR_IDLE;
-      }
-      else
-      {
-        gGear = GEAR_FULL;
-      }
     }
-  
-    if(bUpdateFlags & STEERING_FLAG)
-    {
-      uint8_t directionForPwm = 0;
-      
-      gDirection = gThrottleDirection;
 
-      switch(gDirection)
-      {
-      case DIRECTION_FORWARD:
-        directionForPwm = 0;
-        break;
-      case DIRECTION_REVERSE:
-        directionForPwm = 1;
-        break;
-      }
-      
-      md10rpmSpeed(gThrottle,directionForPwm);
-     
+    // servo
+    throttleSpeed(gThrottle);
+
+  }
+
+  if(bUpdateFlags & STEERING_FLAG)
+  {
+    gSteeringDirection = DIRECTION_LEFT;
+    unSteeringIn = constrain(unThrottleIn,unThrottleMin,unThrottleMax);
+    
+    if(unSteeringIn > (unSteeringCenter + ERROR_center))
+    {
+      gSteering = map(unSteeringIn,(unSteeringCenter + ERROR_center),unSteeringMax,PWM_MIN,PWM_MAX);
+      gSteeringDirection = DIRECTION_LEFT;
     }
+    else if (unSteeringIn < (unSteeringCenter - ERROR_center))
+    {
+      gSteering = map(unSteeringIn,unSteeringMin,(unSteeringCenter- ERROR_center),PWM_MAX,PWM_MIN);
+      gSteeringDirection = DIRECTION_RIGHT;
+    }
+    else
+    {
+      gSteering = 0;
+    }
+
+    md10rpmSpeed(gSteering,gSteeringDirection);
+  }
   
   // no signal == no motor output
   if(bUpdateFlags == 0) {
-      Serial.println(nosignalsafety);
-    if (nosignalsafety < 10) {
+    // Check if last signal was later then 50 ms ago
+    if (nosignalsafety < (millis() - 50)) {
       md10rpmSpeed(0, 0);
-      Serial.println("safety no signal");
-    } else {
-      nosignalsafety = nosignalsafety - 1;
-    }
+      Serial.println("safety - no signal");
+    } 
   }
 
   bUpdateFlags = 0;
@@ -207,7 +178,7 @@ void loop()
 void calcThrottle()
 {
   // signal interrupt, reset the nosignalsafety
-  nosignalsafety = 100;
+  nosignalsafety = millis();
   // if the pin is high, its a rising edge of the signal pulse, so lets record its value
   if(digitalRead(THROTTLE_IN_PIN) == HIGH)
   {
@@ -226,7 +197,7 @@ void calcThrottle()
 void calcSteering()
 {
   // signal interrupt, reset the nosignalsafety
-  nosignalsafety = 100;
+  nosignalsafety = millis();
   if(digitalRead(STEERING_IN_PIN) == HIGH)
   {
     ulSteeringStart = micros();
@@ -242,5 +213,10 @@ void md10rpmSpeed(int rpm, int mDirection) {
   // rpm devide by 2 for better control
   analogWrite(pinMd10Pwm,rpm / 2); 
   digitalWrite(pinMd10Direction,mDirection);
+}
+
+
+void throttleSpeed(int pos) {
+    throttleServo.write(pos);
 }
 
