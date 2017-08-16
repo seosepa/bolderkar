@@ -1,5 +1,5 @@
 
-//geeky singh 14th dec 2015 for instructables.com
+// Greetingz Commander
 
 #define SRC_NEUTRAL 1500
 #define SRC_MAX 2000
@@ -7,7 +7,6 @@
 #define TRC_NEUTRAL 1500
 #define TRC_MAX 2000
 #define TRC_MIN 1000
-#define RC_DEADBAND 50
 #define ERROR_center 50
 #define pERROR 100 
 
@@ -26,20 +25,9 @@ uint16_t unThrottleCenter = TRC_NEUTRAL;
 #define GEAR_IDLE 1
 #define GEAR_FULL 2
 
-#define PWM_SPEED_LEFT 10
-#define PWM_SPEED_RIGHT 4
-#define LEFT1 5
-#define LEFT2 8
-#define RIGHT1 8
-#define RIGHT2 8
-
-// skonig hax
 #define pinMd10Pwm 6
 #define pinMd10Direction 7
 uint32_t nosignalsafety = 0;
-
-
-#define PROGRAM_PIN 9
 
 // Assign your channel in pins
 #define THROTTLE_IN_PIN 2
@@ -81,8 +69,6 @@ uint8_t gDirection = DIRECTION_STOP;
 uint8_t gOldDirection = DIRECTION_STOP;
 
 #define IDLE_MAX 50
-
-#define MODE_RUN 0
 
 unsigned long pulse_time  ;
 
@@ -203,8 +189,6 @@ void loop()
      
     }
   
-  
-
   // no signal == no motor output
   if(bUpdateFlags == 0) {
       Serial.println(nosignalsafety);
@@ -220,10 +204,10 @@ void loop()
 }
 
 
-// simple interrupt service routine
 void calcThrottle()
 {
-  nosignalsafety = 200;
+  // signal interrupt, reset the nosignalsafety
+  nosignalsafety = 100;
   // if the pin is high, its a rising edge of the signal pulse, so lets record its value
   if(digitalRead(THROTTLE_IN_PIN) == HIGH)
   {
@@ -241,7 +225,8 @@ void calcThrottle()
 
 void calcSteering()
 {
-  nosignalsafety = 200;
+  // signal interrupt, reset the nosignalsafety
+  nosignalsafety = 100;
   if(digitalRead(STEERING_IN_PIN) == HIGH)
   {
     ulSteeringStart = micros();
@@ -253,8 +238,9 @@ void calcSteering()
   }
 }
 
-void md10rpmSpeed(int rpm, int mDirection){
-  analogWrite(pinMd10Pwm,rpm / 2);                    // stop motor
+void md10rpmSpeed(int rpm, int mDirection) {
+  // rpm devide by 2 for better control
+  analogWrite(pinMd10Pwm,rpm / 2); 
   digitalWrite(pinMd10Direction,mDirection);
 }
 
