@@ -8,10 +8,11 @@ Servo throttleServo;  // Servo for throttle control
 #define SRC_MAX 2000
 #define SRC_MIN 1000
 #define TRC_NEUTRAL 1500
-#define TRC_MAX 2000
+#define TRC_MAX 1900
 #define TRC_MIN 1000
 #define ERROR_center 50
-#define pERROR 100
+#define ERROR_stop_center 20
+#define pERROR 0
 
 uint16_t unSteeringMin = SRC_MIN + pERROR;
 uint16_t unSteeringMax = SRC_MAX - pERROR;
@@ -24,15 +25,16 @@ uint16_t unThrottleCenter = TRC_NEUTRAL;
 #define PWM_MIN 0
 #define PWM_MAX 255
 
-#define pinThrottleServo 5
-#define pinMd10Pwm 6
-#define pinMd10Direction 7
-
 unsigned long nosignalsafety = 0;
 
-// Assign your channel in pins
+// In/Outputs
+#define THROTTLE_ENABLE_PIN A0
+#define THROTTLE_DIRECTION_PIN A1
 #define THROTTLE_IN_PIN 2
 #define STEERING_IN_PIN 3
+#define STEERING_OUT_PWM_PIN 6
+#define STEERING_OUT_DIRECTION_PIN 7
+#define THROTTLE_OUT_SPEEDSERVO_PIN 9
 
 // These bit flags are set in bUpdateFlagsShared to indicate which
 // channels have new signals
@@ -41,19 +43,12 @@ unsigned long nosignalsafety = 0;
 
 // holds the update flags defined above
 volatile uint8_t bUpdateFlagsShared;
-
-// shared variables are updated by the ISR and read by loop.
-// In loop we immediatley take local copies so that the ISR can keep ownership of the
-// shared ones. To access these in loop
-// we first turn interrupts off with noInterrupts
-// we take a copy to use in loop and the turn interrupts back on
-// as quickly as possible, this ensures that we are always able to receive new signals
 volatile uint16_t unThrottleInShared;
 volatile uint16_t unSteeringInShared;
+volatile uint16_t unLastThrottleInShared;
+volatile uint16_t unLastSteeringInShared;
 
-// These are used to record the rising edge of a pulse in the calcInput functions
-// They do not need to be volatile as they are only used in the ISR. If we wanted
-// to refer to these in loop and the ISR then they would need to be declared volatile
+
 uint32_t ulThrottleStart;
 uint32_t ulSteeringStart;
 
@@ -70,7 +65,7 @@ uint8_t gSteering = 0;
 uint8_t gThrottleDirection = DIRECTION_STOP;
 uint8_t gSteeringDirection = DIRECTION_LEFT;
 
-#define IDLE_MAX 50
+
 
 void setup()
 {
@@ -80,16 +75,19 @@ void setup()
   attachInterrupt(0 /* INT0 = THROTTLE_IN_PIN */,calcThrottle,CHANGE);
   attachInterrupt(1 /* INT1 = STEERING_IN_PIN */,calcSteering,CHANGE);
 
-  throttleServo.attach(5);
+  throttleServo.attach(THROTTLE_OUT_SPEEDSERVO_PIN);
 
-  pinMode(pinMd10Pwm,OUTPUT);
-  pinMode(pinMd10Direction,OUTPUT);
+  pinMode(THROTTLE_ENABLE_PIN,OUTPUT);
+  pinMode(THROTTLE_DIRECTION_PIN,OUTPUT);
+  pinMode(STEERING_OUT_PWM_PIN,OUTPUT);
+  pinMode(STEERING_OUT_DIRECTION_PIN,OUTPUT);
 }
 
 void loop()
 {
   static uint16_t unThrottleIn;
   static uint16_t unSteeringIn;
+  static int16_t unThrottleDiff;
   static uint8_t bUpdateFlags;
 
   if(bUpdateFlagsShared)
@@ -101,7 +99,21 @@ void loop()
 
     if(bUpdateFlags & THROTTLE_FLAG)
     {
-      unThrottleIn = unThrottleInShared;
+      // do check with last value to make sure its not garbage or to little change
+
+      unThrottleDiff = unThrottleInShared - unLastThrottleInShared;
+
+      // to little change, ignore
+      if (unThrottleDiff < 5 && unThrottleDiff > -5) {
+        bUpdateFlags = 0;
+        Serial.println(unThrottleDiff);
+      } else if (unThrottleDiff > 500 && unThrottleDiff < -500) {
+        bUpdateFlags = 0;
+        Serial.println(unThrottleDiff);
+      } else {
+        unLastThrottleInShared = unThrottleInShared;
+        unThrottleIn = unThrottleInShared;
+      }
     }
 
     if(bUpdateFlags & STEERING_FLAG)
@@ -128,15 +140,18 @@ void loop()
       gThrottle = map(unThrottleIn,unThrottleMin,(unThrottleCenter- ERROR_center),PWM_MAX,PWM_MIN);
       gThrottleDirection = DIRECTION_REVERSE;
     }
-    else
+    
+    // Prevent flapping of the relays
+    if(unThrottleIn < (unThrottleCenter + ERROR_stop_center) && unThrottleIn > (unThrottleCenter - ERROR_stop_center))
     {
+      gThrottle = map(unThrottleIn,(unThrottleCenter + ERROR_stop_center),unThrottleMax,PWM_MIN,PWM_MAX);
       gThrottleDirection = DIRECTION_STOP;
-      gThrottle=0;
     }
 
     // servo
     throttleSpeed(gThrottle);
-
+    // direction & enable relays
+    throttleDirection(gThrottleDirection);
   }
 
   if(bUpdateFlags & STEERING_FLAG)
@@ -158,7 +173,6 @@ void loop()
     {
       gSteering = 0;
     }
-
     md10rpmSpeed(gSteering,gSteeringDirection);
   }
   
@@ -167,6 +181,8 @@ void loop()
     // Check if last signal was later then 50 ms ago
     if (nosignalsafety < (millis() - 50)) {
       md10rpmSpeed(0, 0);
+      throttleSpeed(0);
+      throttleDirection(DIRECTION_STOP);
       Serial.println("safety - no signal");
     } 
   }
@@ -189,7 +205,6 @@ void calcThrottle()
     // else it must be a falling edge, so lets get the time and subtract the time of the rising edge
     // this gives use the time between the rising and falling edges i.e. the pulse duration.
     unThrottleInShared = (uint16_t)(micros() - ulThrottleStart);
-    // use set the throttle flag to indicate that a new throttle signal has been received
     bUpdateFlagsShared |= THROTTLE_FLAG;
   }
 }
@@ -211,12 +226,29 @@ void calcSteering()
 
 void md10rpmSpeed(int rpm, int mDirection) {
   // rpm devide by 2 for better control
-  analogWrite(pinMd10Pwm,rpm / 2); 
-  digitalWrite(pinMd10Direction,mDirection);
+  analogWrite(STEERING_OUT_PWM_PIN,rpm / 2); 
+  digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
 }
 
-
 void throttleSpeed(int pos) {
-    throttleServo.write(pos);
+  throttleServo.write(pos);
+}
+
+void throttleDirection(int gDirection) {
+ switch(gDirection)
+  {
+  case DIRECTION_FORWARD:
+    digitalWrite(THROTTLE_ENABLE_PIN,LOW);
+    digitalWrite(THROTTLE_DIRECTION_PIN,HIGH);
+    break;
+  case DIRECTION_REVERSE:
+    digitalWrite(THROTTLE_ENABLE_PIN,LOW);
+    digitalWrite(THROTTLE_DIRECTION_PIN,LOW);
+    break;
+  case DIRECTION_STOP:
+    digitalWrite(THROTTLE_ENABLE_PIN,HIGH);
+    digitalWrite(THROTTLE_DIRECTION_PIN,HIGH);
+    break;
+  }
 }
 
