@@ -22,8 +22,10 @@ uint16_t unThrottleMin = TRC_MIN + pERROR;
 uint16_t unThrottleMax = TRC_MAX - pERROR;
 uint16_t unThrottleCenter = TRC_NEUTRAL;
 
-#define PWM_MIN 0
-#define PWM_MAX 255
+#define PWM_STEERING_MIN 0
+#define PWM_STEERING_MAX 255
+#define PWM_THROTTLE_MIN 10
+#define PWM_THROTTLE_MAX 255
 
 unsigned long nosignalsafety = 0;
 
@@ -48,7 +50,6 @@ volatile uint16_t unSteeringInShared;
 volatile uint16_t unLastThrottleInShared;
 volatile uint16_t unLastSteeringInShared;
 
-
 uint32_t ulThrottleStart;
 uint32_t ulSteeringStart;
 
@@ -65,8 +66,6 @@ uint8_t gSteering = 0;
 uint8_t gThrottleDirection = DIRECTION_STOP;
 uint8_t gSteeringDirection = DIRECTION_LEFT;
 
-
-
 void setup()
 {
   Serial.begin(9600);
@@ -81,6 +80,8 @@ void setup()
   pinMode(THROTTLE_DIRECTION_PIN,OUTPUT);
   pinMode(STEERING_OUT_PWM_PIN,OUTPUT);
   pinMode(STEERING_OUT_DIRECTION_PIN,OUTPUT);
+
+  unLastThrottleInShared = TRC_NEUTRAL;
 }
 
 void loop()
@@ -102,18 +103,14 @@ void loop()
       // do check with last value to make sure its not garbage or to little change
 
       unThrottleDiff = unThrottleInShared - unLastThrottleInShared;
-
-      // to little change, ignore
-      if (unThrottleDiff < 5 && unThrottleDiff > -5) {
-        bUpdateFlags = 0;
-        Serial.println(unThrottleDiff);
-      } else if (unThrottleDiff > 500 && unThrottleDiff < -500) {
-        bUpdateFlags = 0;
-        Serial.println(unThrottleDiff);
-      } else {
-        unLastThrottleInShared = unThrottleInShared;
-        unThrottleIn = unThrottleInShared;
+      if (unThrottleDiff < 0) {
+        unThrottleDiff = unThrottleDiff*-1;  
       }
+      if (unThrottleDiff > 250) {
+        bUpdateFlags = 0;
+      }
+
+      unThrottleIn = unThrottleInShared;
     }
 
     if(bUpdateFlags & STEERING_FLAG)
@@ -122,6 +119,7 @@ void loop()
     }
     
     bUpdateFlagsShared = 0;
+    unLastThrottleInShared = unThrottleInShared;
 
     interrupts(); 
   }
@@ -132,19 +130,19 @@ void loop()
     
     if(unThrottleIn > (unThrottleCenter + ERROR_center))
     {
-      gThrottle = map(unThrottleIn,(unThrottleCenter + ERROR_center),unThrottleMax,PWM_MIN,PWM_MAX);
+      gThrottle = map(unThrottleIn,(unThrottleCenter + ERROR_center),unThrottleMax,PWM_THROTTLE_MIN,PWM_THROTTLE_MAX);
       gThrottleDirection = DIRECTION_FORWARD;
     }
     else if (unThrottleIn < (unThrottleCenter - ERROR_center))
     {
-      gThrottle = map(unThrottleIn,unThrottleMin,(unThrottleCenter- ERROR_center),PWM_MAX,PWM_MIN);
+      gThrottle = map(unThrottleIn,unThrottleMin,(unThrottleCenter- ERROR_center),PWM_THROTTLE_MAX,PWM_THROTTLE_MIN);
       gThrottleDirection = DIRECTION_REVERSE;
     }
     
     // Prevent flapping of the relays
     if(unThrottleIn < (unThrottleCenter + ERROR_stop_center) && unThrottleIn > (unThrottleCenter - ERROR_stop_center))
     {
-      gThrottle = map(unThrottleIn,(unThrottleCenter + ERROR_stop_center),unThrottleMax,PWM_MIN,PWM_MAX);
+      gThrottle = 0;
       gThrottleDirection = DIRECTION_STOP;
     }
 
@@ -157,16 +155,16 @@ void loop()
   if(bUpdateFlags & STEERING_FLAG)
   {
     gSteeringDirection = DIRECTION_LEFT;
-    unSteeringIn = constrain(unThrottleIn,unThrottleMin,unThrottleMax);
+    unSteeringIn = constrain(unSteeringIn,unThrottleMin,unThrottleMax);
     
     if(unSteeringIn > (unSteeringCenter + ERROR_center))
     {
-      gSteering = map(unSteeringIn,(unSteeringCenter + ERROR_center),unSteeringMax,PWM_MIN,PWM_MAX);
+      gSteering = map(unSteeringIn,(unSteeringCenter + ERROR_center),unSteeringMax,PWM_STEERING_MIN,PWM_STEERING_MAX);
       gSteeringDirection = DIRECTION_LEFT;
     }
     else if (unSteeringIn < (unSteeringCenter - ERROR_center))
     {
-      gSteering = map(unSteeringIn,unSteeringMin,(unSteeringCenter- ERROR_center),PWM_MAX,PWM_MIN);
+      gSteering = map(unSteeringIn,unSteeringMin,(unSteeringCenter- ERROR_center),PWM_STEERING_MAX,PWM_STEERING_MIN);
       gSteeringDirection = DIRECTION_RIGHT;
     }
     else
