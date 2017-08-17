@@ -37,6 +37,8 @@ unsigned long nosignalsafety = 0;
 #define STEERING_OUT_PWM_PIN 6
 #define STEERING_OUT_DIRECTION_PIN 7
 #define THROTTLE_OUT_SPEEDSERVO_PIN 9
+#define LIMIT_STEER_LEFT_PIN 10
+#define LIMIT_STEER_RIGHT_PIN 11
 
 // These bit flags are set in bUpdateFlagsShared to indicate which
 // channels have new signals
@@ -223,9 +225,27 @@ void calcSteering()
 }
 
 void md10rpmSpeed(int rpm, int mDirection) {
-  // rpm devide by 2 for better control
-  analogWrite(STEERING_OUT_PWM_PIN,rpm / 2); 
-  digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
+ switch(mDirection)
+  {
+  case DIRECTION_LEFT:
+    if(digitalRead(LIMIT_STEER_LEFT_PIN) == LOW) {
+      // rpm devide by 2 for better control
+      analogWrite(STEERING_OUT_PWM_PIN,rpm / 2);
+      digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
+    } else {
+      analogWrite(STEERING_OUT_PWM_PIN,0);
+    }
+    break;
+  case DIRECTION_RIGHT:
+    if(digitalRead(LIMIT_STEER_RIGHT_PIN) == LOW) {
+      // rpm devide by 2 for better control
+      analogWrite(STEERING_OUT_PWM_PIN,rpm / 2);
+      digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
+    } else {
+      analogWrite(STEERING_OUT_PWM_PIN,0);
+    }
+    break;
+  }
 }
 
 void throttleSpeed(int pos) {
