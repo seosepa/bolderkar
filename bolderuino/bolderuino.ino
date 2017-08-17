@@ -230,7 +230,7 @@ void md10rpmSpeed(int rpm, int mDirection) {
   case DIRECTION_LEFT:
     if(digitalRead(LIMIT_STEER_LEFT_PIN) == LOW) {
       // rpm devide by 2 for better control
-      analogWrite(STEERING_OUT_PWM_PIN,rpm / 2);
+      analogWrite(STEERING_OUT_PWM_PIN,rpm / 1.5);
       digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
     } else {
       analogWrite(STEERING_OUT_PWM_PIN,0);
@@ -239,7 +239,7 @@ void md10rpmSpeed(int rpm, int mDirection) {
   case DIRECTION_RIGHT:
     if(digitalRead(LIMIT_STEER_RIGHT_PIN) == LOW) {
       // rpm devide by 2 for better control
-      analogWrite(STEERING_OUT_PWM_PIN,rpm / 2);
+      analogWrite(STEERING_OUT_PWM_PIN,rpm / 1.5);
       digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
     } else {
       analogWrite(STEERING_OUT_PWM_PIN,0);
