@@ -249,6 +249,10 @@ void md10rpmSpeed(int rpm, int mDirection) {
 }
 
 void throttleSpeed(int pos) {
+  // pos 10 keeps the servo silent :)
+  if (pos < 10) {
+     pos = 10;
+  }
   throttleServo.write(pos);
 }
 
