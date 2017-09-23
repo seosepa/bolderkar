@@ -1,6 +1,8 @@
 
 // Greetingz Commander
 
+
+#include <Wire.h>
 #include <Servo.h>
 Servo throttleServo;  // Servo for throttle control
 
@@ -32,6 +34,7 @@ unsigned long nosignalsafety = 0;
 // In/Outputs
 #define THROTTLE_ENABLE_PIN A0
 #define THROTTLE_DIRECTION_PIN A1
+// A4 & A5 for arduino communication
 #define THROTTLE_IN_PIN 2
 #define STEERING_IN_PIN 3
 #define STEERING_OUT_PWM_PIN 6
@@ -39,6 +42,7 @@ unsigned long nosignalsafety = 0;
 #define THROTTLE_OUT_SPEEDSERVO_PIN 9
 #define LIMIT_STEER_LEFT_PIN 10
 #define LIMIT_STEER_RIGHT_PIN 11
+#define LASER_STEER_PIN 15
 
 // These bit flags are set in bUpdateFlagsShared to indicate which
 // channels have new signals
@@ -72,7 +76,7 @@ void setup()
 {
   Serial.begin(9600);
   Serial.println("mounting swap partition");
-
+  //Wire.begin();
   attachInterrupt(0 /* INT0 = THROTTLE_IN_PIN */,calcThrottle,CHANGE);
   attachInterrupt(1 /* INT1 = STEERING_IN_PIN */,calcSteering,CHANGE);
 
@@ -173,6 +177,11 @@ void loop()
     {
       gSteering = 0;
     }
+
+    if (gSteering > 100) {
+      sendWire(gSteeringDirection + 1);
+    }
+    
     md10rpmSpeed(gSteering,gSteeringDirection);
   }
   
@@ -183,7 +192,6 @@ void loop()
       md10rpmSpeed(0, 0);
       throttleSpeed(0);
       throttleDirection(DIRECTION_STOP);
-      Serial.println("safety - no signal");
     } 
   }
 
@@ -232,6 +240,7 @@ void md10rpmSpeed(int rpm, int mDirection) {
       // rpm devide by 2 for better control
       analogWrite(STEERING_OUT_PWM_PIN,rpm / 1.5);
       digitalWrite(STEERING_OUT_DIRECTION_PIN,mDirection);
+
     } else {
       analogWrite(STEERING_OUT_PWM_PIN,0);
     }
@@ -245,6 +254,11 @@ void md10rpmSpeed(int rpm, int mDirection) {
       analogWrite(STEERING_OUT_PWM_PIN,0);
     }
     break;
+  }
+  if (rpm > 10) {
+      digitalWrite(LASER_STEER_PIN,HIGH);
+  } else {
+      digitalWrite(LASER_STEER_PIN,LOW);
   }
 }
 
@@ -274,3 +288,9 @@ void throttleDirection(int gDirection) {
   }
 }
 
+void sendWire(int value) {
+  //Wire.beginTransmission(8); // transmit to device #8
+  //Wire.write(value);
+  //Serial.println(value);
+  //Wire.endTransmission();    // stop transmitting
+}
