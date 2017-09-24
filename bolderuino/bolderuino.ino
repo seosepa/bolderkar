@@ -43,6 +43,7 @@ unsigned long nosignalsafety = 0;
 #define LIMIT_STEER_LEFT_PIN 10
 #define LIMIT_STEER_RIGHT_PIN 11
 #define LASER_STEER_PIN 15
+#define HEADLIGHT_PIN 17
 
 // These bit flags are set in bUpdateFlagsShared to indicate which
 // channels have new signals
@@ -61,6 +62,8 @@ uint32_t ulSteeringStart;
 
 uint8_t gThrottle = 0;
 uint8_t gSteering = 0;
+uint8_t gHeadlightCheat = 0;
+uint8_t gHeadlightState = 0;
 
 #define DIRECTION_STOP 0
 #define DIRECTION_FORWARD 1
@@ -86,7 +89,8 @@ void setup()
   pinMode(THROTTLE_DIRECTION_PIN,OUTPUT);
   pinMode(STEERING_OUT_PWM_PIN,OUTPUT);
   pinMode(STEERING_OUT_DIRECTION_PIN,OUTPUT);
-
+  pinMode(HEADLIGHT_PIN,OUTPUT);
+  
   unLastThrottleInShared = TRC_NEUTRAL;
 }
 
@@ -285,6 +289,32 @@ void throttleDirection(int gDirection) {
     digitalWrite(THROTTLE_ENABLE_PIN,HIGH);
     digitalWrite(THROTTLE_DIRECTION_PIN,HIGH);
     break;
+  }
+  headlightCheats(gDirection);
+}
+
+void headlightCheats(int gDirection) {
+  
+  if(gDirection == DIRECTION_FORWARD && (gHeadlightCheat == 0 || gHeadlightCheat == 1))
+  {
+    gHeadlightCheat = 1;
+  } else if (gDirection == DIRECTION_STOP && (gHeadlightCheat == 1 || gHeadlightCheat == 2)) {
+    gHeadlightCheat = 2;
+  } else if (gDirection == DIRECTION_FORWARD && (gHeadlightCheat == 2 || gHeadlightCheat == 3)) {
+    gHeadlightCheat = 3;
+  } else if (gDirection == DIRECTION_STOP && (gHeadlightCheat == 3 || gHeadlightCheat == 4)) {
+    gHeadlightCheat = 4;
+  } else if (gDirection == DIRECTION_REVERSE && (gHeadlightCheat == 4 || gHeadlightCheat == 5)) {
+    gHeadlightCheat = 0;
+    if (gHeadlightState == 0) {
+      digitalWrite(HEADLIGHT_PIN,HIGH);
+      gHeadlightState = 1;
+    } else {
+      digitalWrite(HEADLIGHT_PIN,LOW);
+      gHeadlightState = 0;
+    }
+  } else {
+    gHeadlightCheat = 0;
   }
 }
 
