@@ -3,10 +3,12 @@
 #include <avr/power.h>
 #endif
 
+// LED Arduino comm.
+#define LEDCOM_PIN1 A4
+#define LEDCOM_PIN2 A5
+
 #define PIN 5
-
 #define NUM_LEDS 43
-
 #define BRIGHTNESS 100
 
 uint32_t unKnipperTimer = 0;
@@ -57,10 +59,20 @@ void loop() {
  // colorWipe(strip.Color(0, 0, 255), 50); // Blue
  // colorWipe(strip.Color(0, 0, 0, 255), 50); // White
  //whiteOverRainbow(20,75,5); 
-  
 
-audiKnipperLinks(0, 7);
-//audiKnipperRechts(35, 43);
+static uint8_t comPin1;
+static uint8_t comPin2;
+
+comPin1 = digitalRead(LEDCOM_PIN1);
+comPin2 = digitalRead(LEDCOM_PIN2); 
+
+
+if (comPin1 == HIGH && comPin2 == LOW) {
+  audiKnipperLinks(0, 7);
+}
+if (comPin1 == LOW && comPin2 == HIGH) {
+  audiKnipperRechts(35, 43);
+}
 
 
   // fullWhite();
@@ -101,6 +113,7 @@ void audiKnipperRechts(int16_t startLed, int16_t endLed) {
   }
 
 }
+
 void audiKnipperLinks(int16_t startLed, int16_t endLed) {
 
   if (unKnipperTimer == 0) {

@@ -1,8 +1,6 @@
 
 // Greetingz Commander
 
-
-#include <Wire.h>
 #include <Servo.h>
 Servo throttleServo;  // Servo for throttle control
 
@@ -40,7 +38,9 @@ unsigned long nosignalsafety = 0;
 #define HEADLIGHT_PIN A2
 #define NC_PIN A3
 
-
+// LED Arduino comm.
+#define LEDCOM_PIN1 A4
+#define LEDCOM_PIN2 A5
 
 #define STEERING_OUT_PWM_PIN 6
 #define STEERING_OUT_DIRECTION_PIN 7
@@ -48,6 +48,7 @@ unsigned long nosignalsafety = 0;
 #define LIMIT_STEER_LEFT_PIN 10
 #define LIMIT_STEER_RIGHT_PIN 11
 #define LASER_STEER_PIN 15
+
 
 /**
  * Renscontroller
@@ -80,7 +81,6 @@ volatile uint16_t unLastSteeringInShared;
 volatile uint16_t unChannel5Shared;
 volatile uint16_t unLastChannel5Shared;
 
-
 uint32_t ulThrottleStart;
 uint32_t ulSteeringStart;
 uint32_t ulChannel5Start;
@@ -104,7 +104,7 @@ void setup()
 {
   Serial.begin(9600);
   Serial.println("mounting swap partition");
-  //Wire.begin();
+  
   attachInterrupt(0 /* INT0 = THROTTLE_IN_PIN */,calcThrottle,CHANGE);
   attachInterrupt(1 /* INT1 = STEERING_IN_PIN */,calcSteering,CHANGE);
   attachInterrupt(3 /* INT3 = pin20 */,channel5,CHANGE);
@@ -116,6 +116,9 @@ void setup()
   pinMode(STEERING_OUT_PWM_PIN,OUTPUT);
   pinMode(STEERING_OUT_DIRECTION_PIN,OUTPUT);
   pinMode(HEADLIGHT_PIN,OUTPUT);
+
+  pinMode(LEDCOM_PIN1,OUTPUT);
+  pinMode(LEDCOM_PIN2,OUTPUT);
   
   unLastThrottleInShared = TRC_NEUTRAL;
 }
@@ -209,7 +212,7 @@ void loop()
     }
 
     if (gSteering > 100) {
-      sendWire(gSteeringDirection + 1);
+      sendLight(gSteeringDirection + 1);
     }
     
     md10rpmSpeed(gSteering,gSteeringDirection);
@@ -340,9 +343,26 @@ void throttleDirection(int gDirection) {
   }
 }
 
-void sendWire(int value) {
-  //Wire.beginTransmission(8); // transmit to device #8
-  //Wire.write(value);
-  //Serial.println(value);
-  //Wire.endTransmission();    // stop transmitting
+void sendLight(int value) {
+
+if (value == 0) {
+  digitalWrite(LEDCOM_PIN1,LOW);
+  digitalWrite(LEDCOM_PIN2,LOW);
+}
+
+if (value == 1) {
+  digitalWrite(LEDCOM_PIN1,HIGH);
+  digitalWrite(LEDCOM_PIN2,LOW);
+}
+
+if (value == 2) {
+  digitalWrite(LEDCOM_PIN1,LOW);
+  digitalWrite(LEDCOM_PIN2,HIGH);
+}
+
+if (value == 3) {
+  digitalWrite(LEDCOM_PIN1,HIGH);
+  digitalWrite(LEDCOM_PIN2,HIGH);
+}
+
 }
