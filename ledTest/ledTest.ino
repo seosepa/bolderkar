@@ -1,13 +1,17 @@
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
-  #include <avr/power.h>
+#include <avr/power.h>
 #endif
 
 #define PIN 5
 
-#define NUM_LEDS 70
+#define NUM_LEDS 43
 
 #define BRIGHTNESS 100
+
+uint32_t unKnipperTimer = 0;
+int16_t currentLed = 0;
+uint8_t unLedstate = 0;
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -39,12 +43,14 @@ void setup() {
   strip.setBrightness(BRIGHTNESS);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
-
+  Serial.begin(9600);
+  Serial.println("test"); Serial.println("");
 }
 
 void loop() {
+ // Serial.println("loop"); 
   // Some example procedures showing how to display to the pixels:
-//  colorWipe(, 50); // Red
+ // colorWipe(, 50); // Red
 
  // colorWipe(strip.Color(255, 0, 0), 50); // Red
  // colorWipe(strip.Color(0, 255, 0), 50); // Green
@@ -52,47 +58,79 @@ void loop() {
  // colorWipe(strip.Color(0, 0, 0, 255), 50); // White
  //whiteOverRainbow(20,75,5); 
   
-//audiKnipperRechts(37, 40);
-//audiKnipperLinks(44, 47);
- // pulseWhite(5); 
+
+audiKnipperLinks(0, 7);
+//audiKnipperRechts(35, 43);
+
 
   // fullWhite();
   // delay(2000);
 
- rainbowFade2White(3,3,1);
+ //rainbowFade2White(3,3,0);
 
 
 }
 
 // Fill the dots one after the other with a color
-void audiKnipperRechts(uint16_t startLed, uint16_t endLed) {
-  for(uint16_t i=startLed; i<=endLed; i++) {
-    strip.setPixelColor(i, strip.Color(255, 255, 0));
+void audiKnipperRechts(int16_t startLed, int16_t endLed) {
+  if (unKnipperTimer == 0) {
+    unKnipperTimer = millis();
+    currentLed = startLed;
+    unLedstate = 0;
+    Serial.println("startledloop"); 
+  }
+  
+  if(((unKnipperTimer + 40) < millis()) && unLedstate == 0) {
+    strip.setPixelColor(currentLed, strip.Color(255, 50, 0));
     strip.show();
-    delay(100);
+    currentLed++;
+    unKnipperTimer = millis();
   }
-   delay(500);
-     for(uint16_t j=startLed; j<=endLed; j++) {
-    strip.setPixelColor(j, strip.Color(0, 0, 0));
+  
+  if (currentLed > endLed && unLedstate == 0) {
+    for(int16_t j=startLed; j<=endLed; j++) {
+      strip.setPixelColor(j, strip.Color(0, 0, 0));
+      strip.show();
+    }
+    unLedstate = 1;
+    unKnipperTimer = millis();
+  }
+
+  if (((unKnipperTimer + 500) < millis()) && unLedstate == 1) {
+    unKnipperTimer = 0;
+  }
+
+}
+void audiKnipperLinks(int16_t startLed, int16_t endLed) {
+
+  if (unKnipperTimer == 0) {
+    unKnipperTimer = millis();
+    currentLed = startLed;
+    unLedstate = 0;
+    Serial.println("startledloop"); 
+  }
+  
+  if(((unKnipperTimer + 40) < millis()) && unLedstate == 0) {
+    strip.setPixelColor(currentLed, strip.Color(255, 50, 0));
     strip.show();
-    //delay(wait);
+    currentLed++;
+    unKnipperTimer = millis();
   }
-  delay(500);
+  
+  if (currentLed == (endLed + 1) && unLedstate == 0) {
+    for(int16_t j=endLed; j>=startLed; j--) {
+      strip.setPixelColor(j, strip.Color(0, 0, 0));
+      strip.show();
+    }
+    unLedstate = 1;
+    unKnipperTimer = millis();
   }
-  void audiKnipperLinks(uint16_t startLed, uint16_t endLed) {
-  for(uint16_t i=endLed; i>=startLed; i--) {
-    strip.setPixelColor(i, strip.Color(255, 255, 0));
-    strip.show();
-    delay(100);
+
+  if (((unKnipperTimer + 500) < millis()) && unLedstate == 1) {
+    unKnipperTimer = 0;
   }
-   delay(500);
-     for(uint16_t j=endLed; j>=startLed; j--) {
-    strip.setPixelColor(j, strip.Color(0, 0, 0));
-    strip.show();
-    //delay(wait);
-  }
-  delay(500);
-  }
+  
+}
 
 // Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
