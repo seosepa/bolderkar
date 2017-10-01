@@ -29,21 +29,41 @@ uint16_t unThrottleCenter = TRC_NEUTRAL;
 #define PWM_THROTTLE_MIN 10
 #define PWM_THROTTLE_MAX 255
 
+#define PWM_CHANNEL5_MIN 1100
+#define PWM_CHANNEL5_MAX 1800
+
 unsigned long nosignalsafety = 0;
 
 // In/Outputs
 #define THROTTLE_ENABLE_PIN A0
 #define THROTTLE_DIRECTION_PIN A1
-// A4 & A5 for arduino communication
-#define THROTTLE_IN_PIN 2
-#define STEERING_IN_PIN 3
+#define HEADLIGHT_PIN A2
+#define NC_PIN A3
+
+
+
 #define STEERING_OUT_PWM_PIN 6
 #define STEERING_OUT_DIRECTION_PIN 7
 #define THROTTLE_OUT_SPEEDSERVO_PIN 9
 #define LIMIT_STEER_LEFT_PIN 10
 #define LIMIT_STEER_RIGHT_PIN 11
 #define LASER_STEER_PIN 15
-#define HEADLIGHT_PIN 17
+
+/**
+ * Renscontroller
+ * pin2  = ch1 = voor/achter van rechter stick
+ * pin3  = ch2 = links/rechts van rechter stick
+ * pin18 = ch3 = voor/achter van linker stick
+ * pin19 = ch4 = links/rechts van linker stick
+ * pin20 = ch5 = switch rechts
+ * pin21 = ch6 = switch links
+ */
+#define THROTTLE_IN_PIN 2
+#define STEERING_IN_PIN 3
+#define CHANNEL3_PIN 18
+#define CHANNEL4_PIN 19
+#define CHANNEL5_PIN 20
+#define CHANNEL6_PIN 21
 
 // These bit flags are set in bUpdateFlagsShared to indicate which
 // channels have new signals
@@ -57,8 +77,13 @@ volatile uint16_t unSteeringInShared;
 volatile uint16_t unLastThrottleInShared;
 volatile uint16_t unLastSteeringInShared;
 
+volatile uint16_t unChannel5Shared;
+volatile uint16_t unLastChannel5Shared;
+
+
 uint32_t ulThrottleStart;
 uint32_t ulSteeringStart;
+uint32_t ulChannel5Start;
 
 uint8_t gThrottle = 0;
 uint8_t gSteering = 0;
@@ -82,6 +107,7 @@ void setup()
   //Wire.begin();
   attachInterrupt(0 /* INT0 = THROTTLE_IN_PIN */,calcThrottle,CHANGE);
   attachInterrupt(1 /* INT1 = STEERING_IN_PIN */,calcSteering,CHANGE);
+  attachInterrupt(3 /* INT3 = pin20 */,channel5,CHANGE);
 
   throttleServo.attach(THROTTLE_OUT_SPEEDSERVO_PIN);
 
@@ -236,6 +262,28 @@ void calcSteering()
   }
 }
 
+void channel5()
+{
+  // signal interrupt, reset the nosignalsafety
+  nosignalsafety = millis();
+  if(digitalRead(CHANNEL5_PIN) == HIGH)
+  {
+    ulChannel5Start = micros();
+  }
+  else
+  {
+    unChannel5Shared = (uint16_t)(micros() - ulChannel5Start);
+    
+    if (unChannel5Shared < PWM_CHANNEL5_MIN) {
+      digitalWrite(HEADLIGHT_PIN,HIGH);
+    }
+    if (unChannel5Shared > PWM_CHANNEL5_MAX) {
+      digitalWrite(HEADLIGHT_PIN,LOW);
+    }
+  }
+}
+
+
 void md10rpmSpeed(int rpm, int mDirection) {
  switch(mDirection)
   {
@@ -289,32 +337,6 @@ void throttleDirection(int gDirection) {
     digitalWrite(THROTTLE_ENABLE_PIN,HIGH);
     digitalWrite(THROTTLE_DIRECTION_PIN,HIGH);
     break;
-  }
-  headlightCheats(gDirection);
-}
-
-void headlightCheats(int gDirection) {
-  
-  if(gDirection == DIRECTION_FORWARD && (gHeadlightCheat == 0 || gHeadlightCheat == 1))
-  {
-    gHeadlightCheat = 1;
-  } else if (gDirection == DIRECTION_STOP && (gHeadlightCheat == 1 || gHeadlightCheat == 2)) {
-    gHeadlightCheat = 2;
-  } else if (gDirection == DIRECTION_FORWARD && (gHeadlightCheat == 2 || gHeadlightCheat == 3)) {
-    gHeadlightCheat = 3;
-  } else if (gDirection == DIRECTION_STOP && (gHeadlightCheat == 3 || gHeadlightCheat == 4)) {
-    gHeadlightCheat = 4;
-  } else if (gDirection == DIRECTION_REVERSE && (gHeadlightCheat == 4 || gHeadlightCheat == 5)) {
-    gHeadlightCheat = 0;
-    if (gHeadlightState == 0) {
-      digitalWrite(HEADLIGHT_PIN,HIGH);
-      gHeadlightState = 1;
-    } else {
-      digitalWrite(HEADLIGHT_PIN,LOW);
-      gHeadlightState = 0;
-    }
-  } else {
-    gHeadlightCheat = 0;
   }
 }
 
