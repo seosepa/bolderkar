@@ -68,12 +68,15 @@ comPin2 = digitalRead(LEDCOM_PIN2);
 
 
 if (comPin1 == HIGH && comPin2 == LOW) {
-  audiKnipperLinks(0, 7);
+  audiKnipperRechts(7, 0);
 }
 if (comPin1 == LOW && comPin2 == HIGH) {
-  audiKnipperRechts(35, 43);
+  audiKnipperLinks(35, 43);
 }
-
+if (comPin1 == LOW && comPin2 == LOW) {
+  unKnipperTimer = 0;
+  fullWhite();
+}
 
   // fullWhite();
   // delay(2000);
@@ -89,18 +92,17 @@ void audiKnipperRechts(int16_t startLed, int16_t endLed) {
     unKnipperTimer = millis();
     currentLed = startLed;
     unLedstate = 0;
-    Serial.println("startledloop"); 
   }
   
   if(((unKnipperTimer + 40) < millis()) && unLedstate == 0) {
     strip.setPixelColor(currentLed, strip.Color(255, 50, 0));
     strip.show();
-    currentLed++;
+    currentLed--;
     unKnipperTimer = millis();
   }
   
-  if (currentLed > endLed && unLedstate == 0) {
-    for(int16_t j=startLed; j<=endLed; j++) {
+  if (currentLed <= (endLed - 1) && unLedstate == 0) {
+    for(int16_t j=startLed; j>=endLed; j--) {
       strip.setPixelColor(j, strip.Color(0, 0, 0));
       strip.show();
     }
@@ -120,7 +122,6 @@ void audiKnipperLinks(int16_t startLed, int16_t endLed) {
     unKnipperTimer = millis();
     currentLed = startLed;
     unLedstate = 0;
-    Serial.println("startledloop"); 
   }
   
   if(((unKnipperTimer + 40) < millis()) && unLedstate == 0) {
@@ -130,7 +131,7 @@ void audiKnipperLinks(int16_t startLed, int16_t endLed) {
     unKnipperTimer = millis();
   }
   
-  if (currentLed == (endLed + 1) && unLedstate == 0) {
+  if (currentLed >= (endLed + 1) && unLedstate == 0) {
     for(int16_t j=endLed; j>=startLed; j--) {
       strip.setPixelColor(j, strip.Color(0, 0, 0));
       strip.show();

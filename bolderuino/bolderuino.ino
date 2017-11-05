@@ -211,8 +211,12 @@ void loop()
       gSteering = 0;
     }
 
-    if (gSteering > 100) {
+    if (gSteering > 50) {
       sendLight(gSteeringDirection + 1);
+    }
+    else
+    {
+      sendLight(0);
     }
     
     md10rpmSpeed(gSteering,gSteeringDirection);
