@@ -41,6 +41,7 @@ unsigned long nosignalsafety = 0;
 // LED Arduino comm.
 #define LEDCOM_PIN1 A4
 #define LEDCOM_PIN2 A5
+#define LEDCOM_PIN3 A6
 
 #define STEERING_OUT_PWM_PIN 6
 #define STEERING_OUT_DIRECTION_PIN 7
@@ -119,7 +120,8 @@ void setup()
 
   pinMode(LEDCOM_PIN1,OUTPUT);
   pinMode(LEDCOM_PIN2,OUTPUT);
-  
+  pinMode(LEDCOM_PIN3,OUTPUT);
+   
   unLastThrottleInShared = TRC_NEUTRAL;
 }
 
@@ -283,9 +285,11 @@ void channel5()
     
     if (unChannel5Shared < PWM_CHANNEL5_MIN) {
       digitalWrite(HEADLIGHT_PIN,HIGH);
+      digitalWrite(LEDCOM_PIN3,LOW);
     }
     if (unChannel5Shared > PWM_CHANNEL5_MAX) {
       digitalWrite(HEADLIGHT_PIN,LOW);
+      digitalWrite(LEDCOM_PIN3,HIGH);
     }
   }
 }

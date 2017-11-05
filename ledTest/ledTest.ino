@@ -6,6 +6,7 @@
 // LED Arduino comm.
 #define LEDCOM_PIN1 A4
 #define LEDCOM_PIN2 A5
+#define LEDCOM_PIN3 A1
 
 #define PIN 5
 #define NUM_LEDS 43
@@ -46,44 +47,65 @@ void setup() {
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   Serial.begin(9600);
-  Serial.println("test"); Serial.println("");
+  Serial.println("test");
 }
 
 void loop() {
- // Serial.println("loop"); 
-  // Some example procedures showing how to display to the pixels:
- // colorWipe(, 50); // Red
-
- // colorWipe(strip.Color(255, 0, 0), 50); // Red
- // colorWipe(strip.Color(0, 255, 0), 50); // Green
- // colorWipe(strip.Color(0, 0, 255), 50); // Blue
- // colorWipe(strip.Color(0, 0, 0, 255), 50); // White
- //whiteOverRainbow(20,75,5); 
-
-static uint8_t comPin1;
-static uint8_t comPin2;
-
-comPin1 = digitalRead(LEDCOM_PIN1);
-comPin2 = digitalRead(LEDCOM_PIN2); 
-
-
-if (comPin1 == HIGH && comPin2 == LOW) {
-  audiKnipperRechts(7, 0);
+   // Serial.println("loop"); 
+    // Some example procedures showing how to display to the pixels:
+   // colorWipe(, 50); // Red
+  
+   // colorWipe(strip.Color(255, 0, 0), 50); // Red
+   // colorWipe(strip.Color(0, 255, 0), 50); // Green
+   // colorWipe(strip.Color(0, 0, 255), 50); // Blue
+   // colorWipe(strip.Color(0, 0, 0, 255), 50); // White
+   //whiteOverRainbow(20,75,5); 
+  
+  static uint8_t comPin1;
+  static uint8_t comPin2;
+  static uint8_t comPin3;
+  
+  comPin1 = digitalRead(LEDCOM_PIN1);
+  comPin2 = digitalRead(LEDCOM_PIN2); 
+  comPin3 = digitalRead(LEDCOM_PIN3);
+  
+  if (comPin1 == HIGH && comPin2 == LOW) {
+    audiKnipperRechts(7, 0);
+    lightsOut(35,43);
+  }
+  if (comPin1 == LOW && comPin2 == HIGH) {
+    audiKnipperLinks(35, 43);
+    lightsOut(0,7);
+  }
+  if (comPin1 == LOW && comPin2 == LOW) {
+    unKnipperTimer = 0;
+    lightsOut(0,7);
+    lightsOut(35,43);
+  }
+  
+  if (comPin3 == HIGH) {
+    redLight(8,34);
+  } else {
+    lightsOut(8,34);   
+  }
 }
-if (comPin1 == LOW && comPin2 == HIGH) {
-  audiKnipperLinks(35, 43);
+
+void redLight(int16_t startLed, int16_t endLed)
+{
+  strip.setBrightness(10);
+    for(int16_t j=startLed; j<=endLed; j++) {
+      strip.setPixelColor(j, strip.Color(255, 0, 0));
+    }
+  strip.show();
+  strip.setBrightness(BRIGHTNESS);
 }
-if (comPin1 == LOW && comPin2 == LOW) {
-  unKnipperTimer = 0;
-  fullWhite();
-}
 
-  // fullWhite();
-  // delay(2000);
-
- //rainbowFade2White(3,3,0);
-
-
+void lightsOut(int16_t startLed, int16_t endLed)
+{
+    for(int16_t j=startLed; j<=endLed; j++) {
+      strip.setPixelColor(j, strip.Color(0, 0, 0));
+    }
+    strip.show();
 }
 
 // Fill the dots one after the other with a color
