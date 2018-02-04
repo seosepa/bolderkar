@@ -26,7 +26,7 @@ void setup() {
 void loop() {
   delay(5);
   radio.startListening();
-  if ( radio.available()) {
+  if(radio.available()) {
     while (radio.available()) {
       int angleV = 0;
       radio.read(&angleV, sizeof(angleV));
