@@ -9,31 +9,39 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-#define led 12
-RF24 radio(7, 8); // CE, CSN
+#define ledblue 4
+#define ledred 5
+#define ledgreen 6
+RF24 radio(9, 10); // CE, CSN
 const byte addresses[][6] = {"00001", "00002"};
 boolean buttonState = 0;
 void setup() {
-  pinMode(12, OUTPUT);
+  pinMode(53,OUTPUT);
+  pinMode(ledblue, OUTPUT);
+  pinMode(ledgreen, OUTPUT);
+  pinMode(ledred, OUTPUT);
   radio.begin();
   radio.openWritingPipe(addresses[1]); // 00001
   radio.openReadingPipe(1, addresses[0]); // 00002
   radio.setPALevel(RF24_PA_MIN);
+  digitalWrite(ledblue, HIGH);
+  delay(1000);
+  digitalWrite(ledblue, LOW);
+  digitalWrite(ledred, HIGH);
+  delay(1000);
+  digitalWrite(ledred, LOW);
+  digitalWrite(ledgreen, HIGH);
+  delay(1000);
+  digitalWrite(ledgreen, LOW);
 }
 void loop() {
   delay(5);
-  radio.stopListening();
-  int potValue = analogRead(A0);
-  int angleValue = map(potValue, 0, 1023, 0, 180);
-  radio.write(&angleValue, sizeof(angleValue));
-  delay(5);
   radio.startListening();
-  while (!radio.available());
   radio.read(&buttonState, sizeof(buttonState));
   if (buttonState == HIGH) {
-    digitalWrite(led, HIGH);
+    digitalWrite(ledblue, HIGH);
   }
   else {
-    digitalWrite(led, LOW);
+    digitalWrite(ledblue, LOW);
   }
 }
