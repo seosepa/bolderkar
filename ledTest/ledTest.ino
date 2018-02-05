@@ -57,7 +57,7 @@ void loop() {
   
    // colorWipe(strip.Color(255, 0, 0), 50); // Red
    // colorWipe(strip.Color(0, 255, 0), 50); // Green
-   // colorWipe(strip.Color(0, 0, 255), 50); // Blue
+   // colorWipe(strip.Color(0, 0,audiKnipperLinks 255), 50); // Blue
    // colorWipe(strip.Color(0, 0, 0, 255), 50); // White
    //whiteOverRainbow(20,75,5); 
   
@@ -85,19 +85,19 @@ void loop() {
   
   if (comPin3 == HIGH) {
     redLight(8,34);
+    //redLight(0,43);
   } else {
     lightsOut(8,34);   
   }
+
+    strip.show();
 }
 
 void redLight(int16_t startLed, int16_t endLed)
 {
-  strip.setBrightness(10);
     for(int16_t j=startLed; j<=endLed; j++) {
       strip.setPixelColor(j, strip.Color(255, 0, 0));
     }
-  strip.show();
-  strip.setBrightness(BRIGHTNESS);
 }
 
 void lightsOut(int16_t startLed, int16_t endLed)
@@ -105,7 +105,6 @@ void lightsOut(int16_t startLed, int16_t endLed)
     for(int16_t j=startLed; j<=endLed; j++) {
       strip.setPixelColor(j, strip.Color(0, 0, 0));
     }
-    strip.show();
 }
 
 // Fill the dots one after the other with a color
@@ -118,15 +117,13 @@ void audiKnipperRechts(int16_t startLed, int16_t endLed) {
   
   if(((unKnipperTimer + 40) < millis()) && unLedstate == 0) {
     strip.setPixelColor(currentLed, strip.Color(255, 50, 0));
-    strip.show();
     currentLed--;
     unKnipperTimer = millis();
   }
   
-  if (currentLed <= (endLed - 1) && unLedstate == 0) {
+  if (currentLed < endLed && unLedstate == 0) {
     for(int16_t j=startLed; j>=endLed; j--) {
       strip.setPixelColor(j, strip.Color(0, 0, 0));
-      strip.show();
     }
     unLedstate = 1;
     unKnipperTimer = millis();
@@ -148,15 +145,13 @@ void audiKnipperLinks(int16_t startLed, int16_t endLed) {
   
   if(((unKnipperTimer + 40) < millis()) && unLedstate == 0) {
     strip.setPixelColor(currentLed, strip.Color(255, 50, 0));
-    strip.show();
     currentLed++;
     unKnipperTimer = millis();
   }
   
-  if (currentLed >= (endLed + 1) && unLedstate == 0) {
+  if (currentLed > endLed && unLedstate == 0) {
     for(int16_t j=endLed; j>=startLed; j--) {
       strip.setPixelColor(j, strip.Color(0, 0, 0));
-      strip.show();
     }
     unLedstate = 1;
     unKnipperTimer = millis();
